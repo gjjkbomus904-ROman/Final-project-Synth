@@ -106,3 +106,227 @@ func _build_ui() -> void:
 	var viz_panel := _make_panel()
 	viz_panel.custom_minimum_size = Vector2(0, 180)
 	root_vb.add_child(viz_panel)
+
+
+	visualizer = WaveformVisualizer.new()
+	visualizer.synth = synth
+	visualizer.anchor_right = 1.0
+	visualizer.anchor_bottom = 1.0
+	visualizer.offset_left = 8
+	visualizer.offset_top = 8
+	visualizer.offset_right = -8
+	visualizer.offset_bottom = -8
+	viz_panel.add_child(visualizer)
+
+	var mid_row := HBoxContainer.new()
+	mid_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	mid_row.add_theme_constant_override("separation", 12)
+	root_vb.add_child(mid_row)
+
+	mid_row.add_child(_build_synth_panel())
+	mid_row.add_child(_build_sequencer_panel())
+
+
+func _make_panel() -> PanelContainer:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = PANEL
+	sb.border_color = PANEL_BORDER
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	p.add_theme_stylebox_override("panel", sb)
+	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return p
+
+func _section_label(text: String, color: Color = ACCENT) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_color_override("font_color", color)
+	l.add_theme_font_size_override("font_size", 14)
+	return l
+
+func _row_label(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_color_override("font_color", TEXT_DIM)
+	l.add_theme_font_size_override("font_size", 12)
+	l.custom_minimum_size = Vector2(72, 0)
+	return l
+
+func _build_labeled_slider(text: String, min_v: float, max_v: float, step: float, value: float) -> Array:
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_row_label(text))
+	var s := HSlider.new()
+	s.min_value = min_v
+	s.max_value = max_v
+	s.step = step
+	s.value = value
+	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(s)
+	return [row, s]
+
+
+func _build_synth_panel() -> PanelContainer:
+	var panel := _make_panel()
+	panel.custom_minimum_size = Vector2(330, 0)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	panel.add_child(vb)
+
+	vb.add_child(_section_label("SYNTH"))
+	var wave_row := HBoxContainer.new()
+	wave_row.add_child(_row_label("Wave"))
+	wave_option = OptionButton.new()
+	wave_option.add_item("Sine",     Oscillator.WaveType.SINE)
+	wave_option.add_item("Square",   Oscillator.WaveType.SQUARE)
+	wave_option.add_item("Triangle", Oscillator.WaveType.TRIANGLE)
+	wave_option.add_item("Saw",      Oscillator.WaveType.SAW)
+	wave_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wave_option.tooltip_text = "Pick the basic waveform of every note."
+	wave_row.add_child(wave_option)
+	vb.add_child(wave_row)
+
+	# Volume
+	var r: Array
+	r = _build_labeled_slider("Volume", 0.0, 0.6, 0.01, synth.master_volume)
+	volume_slider = r[1]
+	volume_slider.tooltip_text = "Master output volume (0.0 = silent, 0.6 = max)."
+	vb.add_child(r[0])
+	vb.add_child(_section_label("ENVELOPE", ACCENT_2))
+	r = _build_labeled_slider("Attack",  0.0, 2.0, 0.005, synth.attack);  attack_slider = r[1]
+	attack_slider.tooltip_text = "Fade-in time in seconds."
+	vb.add_child(r[0])
+	r = _build_labeled_slider("Decay",   0.0, 2.0, 0.005, synth.decay);   decay_slider = r[1]
+	decay_slider.tooltip_text = "Time for the note to fall from the peak."
+	vb.add_child(r[0])
+	r = _build_labeled_slider("Release", 0.0, 3.0, 0.01,  synth.release); release_slider = r[1]
+	release_slider.tooltip_text = "Fade-out time after the key is released."
+	vb.add_child(r[0])
+
+	# Delay
+	vb.add_child(_section_label("DELAY", ACCENT_2))
+	delay_check = CheckButton.new()
+	delay_check.text = "Enabled"
+	delay_check.button_pressed = synth.delay_enabled
+	delay_check.tooltip_text = "Toggle the delay effect on or off."
+	vb.add_child(delay_check)
+	r = _build_labeled_slider("Time",     0.05, 1.5,  0.01, synth.delay_time);     delay_time_slider = r[1]
+	delay_time_slider.tooltip_text = "Delay time in seconds (gap between echoes)."
+	vb.add_child(r[0])
+	r = _build_labeled_slider("Feedback", 0.0,  0.92, 0.01, synth.delay_feedback); delay_feedback_slider = r[1]
+	delay_feedback_slider.tooltip_text = "Echo feedback. Higher = longer tail (avoid 1.0)."
+	vb.add_child(r[0])
+	r = _build_labeled_slider("Mix",      0.0,  1.0,  0.01, synth.delay_mix);      delay_mix_slider = r[1]
+	delay_mix_slider.tooltip_text = "Wet level: 0 = no echo, 1 = full wet."
+	vb.add_child(r[0])
+
+	# Panic
+	panic_button = Button.new()
+	panic_button.text = "PANIC (all notes off)"
+	panic_button.tooltip_text = "Immediately silences every voice. Useful if a note gets stuck."
+	vb.add_child(panic_button)
+
+	return panel
+
+
+func _build_sequencer_panel() -> PanelContainer:
+	var panel := _make_panel()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	panel.add_child(vb)
+
+	vb.add_child(_section_label("SEQUENCER"))
+
+	#Transport row
+	var transport := HBoxContainer.new()
+	transport.add_theme_constant_override("separation", 6)
+	play_button = Button.new(); play_button.text = "▶ Play"
+	stop_button = Button.new(); stop_button.text = "■ Stop"
+	clear_button = Button.new(); clear_button.text = "Clear"
+	transport.add_child(play_button)
+	transport.add_child(stop_button)
+	transport.add_child(clear_button)
+	vb.add_child(transport)
+
+	#BPM
+	var bpm_row := HBoxContainer.new()
+	bpm_row.add_child(_row_label("BPM"))
+	bpm_slider = HSlider.new()
+	bpm_slider.min_value = 50
+	bpm_slider.max_value = 200
+	bpm_slider.step = 1
+	bpm_slider.value = sequencer.bpm
+	bpm_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bpm_row.add_child(bpm_slider)
+	bpm_label = Label.new()
+	bpm_label.text = "%d" % int(sequencer.bpm)
+	bpm_label.custom_minimum_size = Vector2(40, 0)
+	bpm_row.add_child(bpm_label)
+	vb.add_child(bpm_row)
+
+	# Step grid
+	var grid := GridContainer.new()
+	grid.columns = 16
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	for i in sequencer.steps:
+		var btn := Button.new()
+		btn.toggle_mode = true
+		btn.text = ""
+		btn.custom_minimum_size = Vector2(28, 36)
+		btn.tooltip_text = "Step %d — click to toggle, right-click clears" % (i + 1)
+		btn.gui_input.connect(_on_step_button_input.bind(i))
+		btn.toggled.connect(_on_step_toggled.bind(i))
+		step_buttons.append(btn)
+		grid.add_child(btn)
+	vb.add_child(grid)
+
+
+	vb.add_child(_section_label("GENERATE", ACCENT_2))
+
+	var scale_row := HBoxContainer.new()
+	scale_row.add_child(_row_label("Scale"))
+	scale_option = OptionButton.new()
+	for s in PatternGenerator.scale_names():
+		scale_option.add_item(str(s).replace("_", " "))
+	scale_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scale_row.add_child(scale_option)
+	vb.add_child(scale_row)
+
+	var root_row := HBoxContainer.new()
+	root_row.add_child(_row_label("Root"))
+	root_option = OptionButton.new()
+	for midi in ROOT_OPTIONS:
+		root_option.add_item(_midi_name(midi), midi)
+	# default to C4 (60)
+	for i in root_option.item_count:
+		if root_option.get_item_id(i) == 60:
+			root_option.select(i)
+			break
+	root_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root_row.add_child(root_option)
+	vb.add_child(root_row)
+
+
+	var r: Array
+	r = _build_labeled_slider("Density", 0.1, 0.95, 0.01, 0.55); density_slider = r[1]; vb.add_child(r[0])
+
+	var gen_row := HBoxContainer.new()
+	gen_row.add_theme_constant_override("separation", 6)
+	generate_button = Button.new(); generate_button.text = "Random"
+	euclid_button = Button.new();   euclid_button.text = "Euclidean"
+	generate_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	euclid_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gen_row.add_child(generate_button)
+	gen_row.add_child(euclid_button)
+	vb.add_child(gen_row)
+
+	return panel
