@@ -12,3 +12,24 @@ const KEY_MAP: Dictionary = {
 	KEY_R: 65, KEY_5: 66, KEY_T: 67, KEY_6: 68, KEY_Y: 69,
 	KEY_7: 70, KEY_U: 71, KEY_I: 72,
 }
+
+var _pressed: Dictionary = {}
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not event is InputEventKey:
+		return
+	var key_event: InputEventKey = event
+	if not KEY_MAP.has(key_event.keycode):
+		return
+	var note: int = KEY_MAP[key_event.keycode]
+	if key_event.pressed and not key_event.echo:
+		if not _pressed.has(note):
+			_pressed[note] = true
+			note_on.emit(note)
+	elif not key_event.pressed:
+		if _pressed.has(note):
+			_pressed.erase(note)
+			note_off.emit(note)
