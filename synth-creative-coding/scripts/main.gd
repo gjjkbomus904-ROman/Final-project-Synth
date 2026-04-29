@@ -330,3 +330,41 @@ func _build_sequencer_panel() -> PanelContainer:
 	vb.add_child(gen_row)
 
 	return panel
+
+func _connect_signals() -> void:
+	keyboard.note_on.connect(_on_keyboard_note_on)
+	keyboard.note_off.connect(_on_keyboard_note_off)
+
+	sequencer.note_triggered.connect(_on_seq_note_triggered)
+	sequencer.step_changed.connect(_on_seq_step_changed)
+
+	wave_option.item_selected.connect(func(idx): synth.wave_type = wave_option.get_item_id(idx))
+	volume_slider.value_changed.connect(func(v): synth.master_volume = v)
+	attack_slider.value_changed.connect(func(v): synth.attack = v)
+	decay_slider.value_changed.connect(func(v): synth.decay = v)
+	release_slider.value_changed.connect(func(v): synth.release = v)
+	delay_check.toggled.connect(func(p): synth.delay_enabled = p)
+	delay_time_slider.value_changed.connect(func(v): synth.delay_time = v)
+	delay_feedback_slider.value_changed.connect(func(v): synth.delay_feedback = v)
+	delay_mix_slider.value_changed.connect(func(v): synth.delay_mix = v)
+	panic_button.pressed.connect(_on_panic)
+
+	play_button.pressed.connect(func():
+		sequencer.start()
+	)
+	stop_button.pressed.connect(func():
+		sequencer.stop()
+		synth.panic()
+		_clear_playhead()
+	)
+	clear_button.pressed.connect(func():
+		sequencer.clear()
+		_refresh_step_buttons()
+	)
+	bpm_slider.value_changed.connect(func(v):
+		sequencer.set_bpm(v)
+		bpm_label.text = "%d" % int(v)
+	)
+
+	generate_button.pressed.connect(_on_generate_random)
+	euclid_button.pressed.connect(_on_generate_euclidean)
