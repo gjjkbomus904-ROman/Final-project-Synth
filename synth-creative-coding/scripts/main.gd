@@ -52,8 +52,6 @@ func _ready() -> void:
 	_build_ui()
 	_connect_signals()
 
-
-
 #AUDIO CHAIN
 
 func _build_audio_chain() -> void:
@@ -368,3 +366,87 @@ func _connect_signals() -> void:
 
 	generate_button.pressed.connect(_on_generate_random)
 	euclid_button.pressed.connect(_on_generate_euclidean)
+
+func _on_keyboard_note_on(midi_note: int) -> void:
+	synth.note_on(midi_note)
+
+func _on_keyboard_note_off(midi_note: int) -> void:
+	synth.note_off(midi_note)
+
+func _on_seq_note_triggered(midi_note: int) -> void:
+	synth.note_on(midi_note)
+	var t: SceneTreeTimer = get_tree().create_timer(sequencer.step_duration() * sequencer.gate)
+	t.timeout.connect(func(): synth.note_off(midi_note))
+
+func _on_seq_step_changed(step: int) -> void:
+	for i in step_buttons.size():
+		var btn: Button = step_buttons[i]
+		_apply_step_style(btn, sequencer.pattern[i] >= 0, i == step)
+
+func _clear_playhead() -> void:
+	for i in step_buttons.size():
+		_apply_step_style(step_buttons[i], sequencer.pattern[i] >= 0, false)
+
+func _on_step_button_input(event: InputEvent, idx: int) -> void:
+	if event is InputEventMouseButton and event.pressed:
+		var mb: InputEventMouseButton = event
+		if mb.button_index == MOUSE_BUTTON_RIGHT:
+			sequencer.set_step(idx, -1)
+			step_buttons[idx].set_pressed_no_signal(false)
+			_apply_step_style(step_buttons[idx], false, idx == sequencer.current_step)
+
+func _on_step_toggled(pressed: bool, idx: int) -> void:
+	if pressed:
+		var root_id: int = root_option.get_item_id(root_option.selected)
+		var scale_name: String = scale_option.get_item_text(scale_option.selected).replace(" ", "_")
+		var scale: Array = PatternGenerator.SCALES.get(scale_name, [0])
+		var degree: int = (idx / 4) % scale.size()
+		sequencer.set_step(idx, root_id + scale[degree])
+	else:
+		sequencer.set_step(idx, -1)
+	_apply_step_style(step_buttons[idx], pressed, idx == sequencer.current_step)
+
+func _apply_step_style(btn: Button, has_note: bool, is_playhead: bool) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.set_corner_radius_all(4)
+	if is_playhead and has_note:
+		sb.bg_color = ACCENT_2
+	elif is_playhead:
+		sb.bg_color = Color(ACCENT_2.r, ACCENT_2.g, ACCENT_2.b, 0.45)
+	elif has_note:
+		sb.bg_color = ACCENT
+	else:
+		sb.bg_color = Color(0.18, 0.19, 0.27)
+	btn.add_theme_stylebox_override("normal", sb)
+	btn.add_theme_stylebox_override("hover", sb)
+	btn.add_theme_stylebox_override("pressed", sb)
+
+func _refresh_step_buttons() -> void:
+	for i in step_buttons.size():
+		var has_note: bool = sequencer.pattern[i] >= 0
+		step_buttons[i].set_pressed_no_signal(has_note)
+		_apply_step_style(step_buttons[i], has_note, i == sequencer.current_step)
+
+func _on_generate_random() -> void:
+	var root_id: int = root_option.get_item_id(root_option.selected)
+	var scale_name: String = scale_option.get_item_text(scale_option.selected).replace(" ", "_")
+	var pattern: Array[int] = PatternGenerator.generate(sequencer.steps, root_id, scale_name, density_slider.value)
+	sequencer.load_pattern(pattern)
+	_refresh_step_buttons()
+
+func _on_generate_euclidean() -> void:
+	var root_id: int = root_option.get_item_id(root_option.selected)
+	var scale_name: String = scale_option.get_item_text(scale_option.selected).replace(" ", "_")
+	var hits: int = int(round(density_slider.value * sequencer.steps))
+	hits = clamp(hits, 1, sequencer.steps)
+	var pattern: Array[int] = PatternGenerator.euclidean(sequencer.steps, hits, root_id, scale_name)
+	sequencer.load_pattern(pattern)
+	_refresh_step_buttons()
+
+func _on_panic() -> void:
+	synth.panic()
+
+func _midi_name(midi: int) -> String:
+	var note: String = NOTE_NAMES[midi % 12]
+	var octave: int = (midi / 12) - 1
+	return "%s%d" % [note, octave]
