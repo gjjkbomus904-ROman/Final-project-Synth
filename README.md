@@ -24,12 +24,12 @@ Panic button
 
 Keyboard
 
-Lower row: C3
-Upper row: C5
-Left-click: toggle note
-Right-click: clear
-Play / Stop
-BPM, Density sliders
+Lower row: C3 
+Upper row: C5 
+Left-click: toggle note 
+Right-click: clear 
+Play / Stop 
+BPM, Density sliders 
 
 #Run
 
