@@ -4,6 +4,7 @@ Polyphonic generative synthesizer, step sequencer, and real-time visualizer buil
 
 Replace with demo video:
 [https://youtu.be/C5WUfZZ4xJA]
+<img width="1152" height="648" alt="Знімок екрана 2026-05-01 121049" src="https://github.com/user-attachments/assets/c3bfa1cb-108e-4da8-ab67-3b6c3c034da4" />
 
 #Features
 
